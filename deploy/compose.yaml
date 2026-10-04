@@ -1,0 +1,129 @@
+name: hockey-index
+
+services:
+  api:
+    image: ${HI_API_IMAGE:?}:${HI_API_TAG:?}
+    restart: unless-stopped
+    mem_limit: 1g
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      HI_OPS_BIND: ${HI_OPS_BIND:?}
+      ConnectionStrings__Default: Host=pg-prod;Port=5432;Database=${POSTGRES_DB:?};Username=hi_app;Password=${HI_APP_PASSWORD:?}
+      Signup__Mode: ${SIGNUP_MODE:?}
+      Edge__Key: ${HI_EDGE_KEY:?}
+      Edge__PreviousKey: ${HI_EDGE_PREVIOUS_KEY:-}
+      Hmac__Key: ${HI_HMAC_KEY:?}
+      Turnstile__SecretKey: ${TURNSTILE_SECRET_KEY:?}
+      Twilio__AccountSid: ${TWILIO_ACCOUNT_SID:?}
+      Twilio__AuthToken: ${TWILIO_AUTH_TOKEN:?}
+      Twilio__VerifyServiceSid: ${TWILIO_VERIFY_SERVICE_SID:?}
+      Twilio__CallbackUrl: ${TWILIO_CALLBACK_URL:?}
+      Mapbox__AccessToken: ${MAPBOX_ACCESS_TOKEN:?}
+      WebRisk__ApiKey: ${WEBRISK_API_KEY:?}
+      Postmark__ServerToken: ${POSTMARK_SERVER_TOKEN:?}
+      Cloudflare__ApiToken: ${CLOUDFLARE_PURGE_TOKEN:?}
+      Cloudflare__ZoneId: ${CLOUDFLARE_ZONE_ID:?}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:?}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:?}
+    depends_on:
+      pg-prod:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://${HI_OPS_BIND:?}:8081/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      edge: {}
+      prod-internal:
+        ipv4_address: ${HI_OPS_BIND:?}
+
+  migrator:
+    image: ${HI_MIGRATOR_IMAGE:?}:${HI_API_TAG:?}
+    profiles: [migrate]
+    restart: "no"
+    mem_limit: 512m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      MIGRATOR_CONNECTION: Host=pg-prod;Port=5432;Database=${POSTGRES_DB:?};Username=hi_migrator;Password=${HI_MIGRATOR_PASSWORD:?}
+    depends_on:
+      pg-prod:
+        condition: service_healthy
+    networks:
+      - prod-internal
+
+  pg-prod:
+    image: postgis/postgis:17-3.5
+    restart: unless-stopped
+    mem_limit: 3g
+    shm_size: 1g
+    command: ["postgres", "-c", "shared_buffers=1GB"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ${POSTGRES_DB:?}
+      HI_MIGRATOR_PASSWORD: ${HI_MIGRATOR_PASSWORD:?}
+      HI_APP_PASSWORD: ${HI_APP_PASSWORD:?}
+    volumes:
+      - pg-prod-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d ${POSTGRES_DB:?}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - prod-internal
+
+  cloudflared:
+    image: cloudflare/cloudflared:${CLOUDFLARED_TAG:-latest}
+    restart: unless-stopped
+    mem_limit: 256m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?}
+    volumes:
+      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+    networks:
+      - edge
+
+  backup:
+    build: ./backup
+    restart: unless-stopped
+    mem_limit: 256m
+    environment:
+      PGHOST: pg-prod
+      PGUSER: hi_migrator
+      PGPASSWORD: ${HI_MIGRATOR_PASSWORD:?}
+      PGDATABASE: ${POSTGRES_DB:?}
+      AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:?}
+      R2_ENDPOINT: ${R2_ENDPOINT:?}
+      R2_BUCKET: ${R2_BUCKET:?}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:?}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?}
+    depends_on:
+      pg-prod:
+        condition: service_healthy
+    networks:
+      - prod-internal
+      - backup-egress
+
+networks:
+  edge:
+    name: hockey-index-edge
+  prod-internal:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.10.0/24
+  backup-egress: {}
+
+volumes:
+  pg-prod-data: {}

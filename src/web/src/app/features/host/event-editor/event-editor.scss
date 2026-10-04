@@ -1,0 +1,83 @@
+.progress-slot {
+  height: 4px;
+  margin-block: -12px 8px;
+}
+
+h2[mat-card-title] {
+  margin: 0;
+  font: var(--mat-sys-title-large);
+}
+
+mat-card-header {
+  padding-bottom: 8px;
+}
+
+.type-toggle {
+  align-self: flex-start;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 20px 16px;
+}
+
+.venue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.venue-text {
+  display: flex;
+  flex: 1 1 200px;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.venue-text strong {
+  color: var(--mat-sys-on-surface);
+}
+
+.skill {
+  display: flex;
+  flex-direction: column;
+}
+
+.skill mat-slider {
+  margin-inline: 8px;
+}
+
+.label {
+  font: var(--mat-sys-title-medium);
+}
+
+.helper {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.skill-link {
+  margin-top: 4px;
+}
+
+.fee-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 16px;
+}
+
+.list {
+  margin: 4px 0 0;
+  padding-left: 20px;
+  overflow-wrap: anywhere;
+}
+
+.message-action {
+  display: block;
+  margin-top: 8px;
+}

@@ -1,0 +1,79 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: src/api/global.json
+      - run: dotnet restore
+      - run: dotnet build --no-restore -c Release
+      - run: dotnet test --no-build -c Release
+
+  ef-drift:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/api
+    env:
+      ConnectionStrings__Default: Host=localhost;Database=drift;Username=drift;Password=drift
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: src/api/global.json
+      - run: dotnet tool restore
+      - run: dotnet restore
+      - run: dotnet ef migrations has-pending-model-changes --project HockeyIndex.Api
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  compose-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check ports and network membership
+        run: deploy/scripts/check-no-ports.sh
+      - name: Validate compose files
+        run: |
+          for file in compose compose.staging compose.dev; do
+            docker compose --env-file deploy/.env.example -f "deploy/$file.yaml" config --quiet
+          done
+      - name: Shellcheck
+        run: shellcheck deploy/scripts/*.sh deploy/backup/backup.sh
+      - name: Lint workflows
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color

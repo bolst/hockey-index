@@ -1,0 +1,43 @@
+@if (confirmed(); as link) {
+  <mat-card appearance="outlined" class="card">
+    <mat-card-content class="content">
+      <div class="badge" aria-hidden="true"><mat-icon>open_in_new</mat-icon></div>
+      <h1 class="headline">You are leaving Hockey Index</h1>
+      <p class="lead">This link goes to</p>
+      <p class="host" data-testid="destination-host">{{ link.host }}</p>
+      @if (redirectHost(); as other) {
+        <p class="redirect">
+          <mat-icon aria-hidden="true">alt_route</mat-icon>
+          It then redirects to <strong>{{ other }}</strong>.
+        </p>
+      }
+      <p class="full-url"><span class="visually-hidden">Full address: </span>{{ link.url }}</p>
+      <ul class="tips">
+        <li>Hosts post their own links. Hockey Index does not check what is on the other side.</li>
+        <li>Never send money or passwords to someone you cannot verify.</li>
+      </ul>
+    </mat-card-content>
+    <mat-card-actions class="actions">
+      <a matButton="outlined" [routerLink]="backLink()">
+        <mat-icon aria-hidden="true">arrow_back</mat-icon>
+        Go back
+      </a>
+      <a matButton="filled" [href]="link.url" rel="nofollow ugc noopener noreferrer">
+        Continue to {{ link.host }}
+      </a>
+    </mat-card-actions>
+  </mat-card>
+} @else if (unrecognized()) {
+  <app-empty-state icon="link_off" headline="We cannot open this link" [headingLevel]="1">
+    <p data-testid="out-unrecognized">
+      It is not in this event's join instructions any more, or it was blocked for safety.
+    </p>
+    <a emptyStateActions matButton="filled" [routerLink]="backLink()">
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      Go back
+    </a>
+  </app-empty-state>
+} @else {
+  <h1 class="visually-hidden">Checking link</h1>
+  <mat-progress-bar mode="indeterminate" aria-label="Checking link" />
+}

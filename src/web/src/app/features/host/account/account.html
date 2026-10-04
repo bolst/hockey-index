@@ -1,0 +1,106 @@
+<app-page-header headline="Account" supportingText="How you sign in to Hockey Index." />
+
+<div class="progress-slot">
+  @if (busy()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Working" />
+  }
+</div>
+
+@if (session.me(); as me) {
+  <div class="app-stack app-stack--lg">
+    @if (error(); as message) {
+      <app-inline-message kind="error">{{ message }}</app-inline-message>
+    }
+
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <h2 mat-card-title>Sign-in methods</h2>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-list aria-label="Sign-in methods">
+          <mat-list-item>
+            <mat-icon matListItemIcon aria-hidden="true">smartphone</mat-icon>
+            <span matListItemTitle>Phone</span>
+            <span matListItemLine data-testid="account-phone">{{ me.phone | phone }}</span>
+          </mat-list-item>
+          <mat-divider />
+          <mat-list-item>
+            <mat-icon matListItemIcon aria-hidden="true">mail</mat-icon>
+            <span matListItemTitle>Email</span>
+            @if (me.email) {
+              <span matListItemLine>{{ me.email }}</span>
+            } @else {
+              <span matListItemLine>Not added</span>
+            }
+            @if (me.email) {
+              <app-status-chip matListItemMeta label="Confirmed" tone="positive" icon="verified" />
+            }
+          </mat-list-item>
+        </mat-list>
+      </mat-card-content>
+      @if (me.email) {
+        <mat-card-actions align="end">
+          <button matButton="outlined" type="button" [disabled]="busy()" (click)="removeEmail()">
+            <mat-icon aria-hidden="true">delete</mat-icon>
+            Remove email
+          </button>
+        </mat-card-actions>
+      }
+    </mat-card>
+
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <h2 mat-card-title>{{ me.email ? 'Change email' : 'Add email' }}</h2>
+      </mat-card-header>
+      <mat-card-content>
+        @if (!awaitingCode()) {
+          <form class="app-form" (submit)="$event.preventDefault(); addEmail()">
+            <mat-form-field subscriptSizing="dynamic" appearance="outline">
+              <mat-label>Email address</mat-label>
+              <mat-icon matPrefix aria-hidden="true">alternate_email</mat-icon>
+              <input matInput id="new-email" type="email" autocomplete="email" [formControl]="newEmail" />
+              <mat-hint>Add an email so you can also sign in by email. We send a code to confirm it.</mat-hint>
+              @if (newEmail.hasError('email')) {
+                <mat-error>Enter a valid email address.</mat-error>
+              } @else {
+                <mat-error>Enter an email address.</mat-error>
+              }
+            </mat-form-field>
+            <div class="app-actions">
+              <button matButton="filled" type="submit" [disabled]="busy()">Send confirmation</button>
+            </div>
+          </form>
+        } @else {
+          <form class="app-form" (submit)="$event.preventDefault(); confirmCode()">
+            <p class="intro">Enter the code we emailed to <strong>{{ pendingEmail() }}</strong>, or open the link in that email.</p>
+            <mat-form-field appearance="outline">
+              <mat-label>Confirmation code</mat-label>
+              <mat-icon matPrefix aria-hidden="true">pin</mat-icon>
+              <input matInput id="email-code" inputmode="numeric" autocomplete="one-time-code" [formControl]="code" />
+              <mat-error>Enter the confirmation code.</mat-error>
+            </mat-form-field>
+            <div class="app-actions">
+              <button matButton="filled" type="submit" [disabled]="busy()">Confirm email</button>
+              <button matButton type="button" (click)="useDifferentEmail()">Use a different email</button>
+            </div>
+          </form>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <h2 mat-card-title>Session</h2>
+      </mat-card-header>
+      <mat-card-content>
+        <p class="intro">Sign out on shared or public devices.</p>
+      </mat-card-content>
+      <mat-card-actions align="end">
+        <button matButton="outlined" type="button" [disabled]="busy()" (click)="signOut()">
+          <mat-icon aria-hidden="true">logout</mat-icon>
+          Sign out
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+}

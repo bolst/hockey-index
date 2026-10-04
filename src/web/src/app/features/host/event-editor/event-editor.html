@@ -1,0 +1,240 @@
+<app-page-header
+  [headline]="isNew ? 'New event' : 'Edit event'"
+  supportingText="Players see these details on the public event page."
+>
+  <a pageHeaderActions matButton routerLink="/host">
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>
+    Your events
+  </a>
+</app-page-header>
+
+<div class="progress-slot">
+  @if (loading() || saving()) {
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="saving() ? 'Saving' : 'Loading event'" />
+  }
+</div>
+
+<form class="app-stack app-stack--lg" [formGroup]="form" (submit)="$event.preventDefault()">
+  @if (stale()) {
+    <app-inline-message kind="error" data-testid="stale">
+      This event changed in another tab or device. Reload to get the latest version, then make your changes again.
+      <button matButton type="button" class="message-action" (click)="reload()">Reload</button>
+    </app-inline-message>
+  }
+  @if (error(); as message) {
+    <app-inline-message kind="error" data-testid="form-error">
+      {{ message }}
+      @if (fieldErrorSummary().length > 0) {
+        <ul class="list">
+          @for (item of fieldErrorSummary(); track $index) {
+            <li>{{ item }}</li>
+          }
+        </ul>
+      }
+    </app-inline-message>
+  }
+  @if (info(); as message) {
+    <app-inline-message kind="info" data-testid="parked">{{ message }}</app-inline-message>
+  }
+
+  <mat-card appearance="outlined">
+    <mat-card-header><h2 mat-card-title>When</h2></mat-card-header>
+    <mat-card-content class="app-form">
+      <mat-button-toggle-group formControlName="type" aria-label="Event type" class="type-toggle">
+        <mat-button-toggle value="scrimmage">Scrimmage</mat-button-toggle>
+        <mat-button-toggle value="league">League</mat-button-toggle>
+        <mat-button-toggle value="tournament">Tournament</mat-button-toggle>
+      </mat-button-toggle-group>
+
+      @if (isScrimmage()) {
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Date</mat-label>
+          <input matInput formControlName="date" [matDatepicker]="datePicker" />
+          <mat-hint>MM/DD/YYYY</mat-hint>
+          <mat-datepicker-toggle matIconSuffix [for]="datePicker" />
+          <mat-datepicker #datePicker />
+          <mat-error>Enter a valid date.</mat-error>
+        </mat-form-field>
+        <div class="row">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Start time</mat-label>
+            <input matInput formControlName="startTime" [matTimepicker]="startPicker" />
+            <mat-timepicker-toggle matIconSuffix [for]="startPicker" />
+            <mat-timepicker #startPicker />
+            <mat-error>{{ errorText(form.controls.startTime, 'Enter a start time.') }}</mat-error>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>End time</mat-label>
+            <input matInput formControlName="endTime" [matTimepicker]="endPicker" />
+            <mat-timepicker-toggle matIconSuffix [for]="endPicker" />
+            <mat-timepicker #endPicker />
+            @if (endsNextDay()) {
+              <mat-hint data-testid="next-day">Ends the next day</mat-hint>
+            }
+            <mat-error>{{ errorText(form.controls.endTime, 'Enter an end time.') }}</mat-error>
+          </mat-form-field>
+        </div>
+      } @else {
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Dates</mat-label>
+          <mat-date-range-input [rangePicker]="rangePicker">
+            <input matStartDate formControlName="startDate" aria-label="Start date" placeholder="Start date" />
+            <input matEndDate formControlName="endDate" aria-label="End date" placeholder="End date" />
+          </mat-date-range-input>
+          <mat-hint>First and last day, inclusive</mat-hint>
+          <mat-datepicker-toggle matIconSuffix [for]="rangePicker" />
+          <mat-date-range-picker #rangePicker />
+          <mat-error>
+            {{ errorText(form.controls.startDate, errorText(form.controls.endDate, 'Enter a start and end date.')) }}
+          </mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Schedule</mat-label>
+          <textarea matInput formControlName="scheduleText" rows="3" [maxlength]="limits.SCHEDULE_MAX"></textarea>
+          <mat-hint>For example, “Tuesdays 9:30 PM”.</mat-hint>
+          <mat-hint align="end">{{ value().scheduleText.length }}/{{ limits.SCHEDULE_MAX }}</mat-hint>
+          <mat-error>{{ errorText(form.controls.scheduleText, 'Keep the schedule under 500 characters.') }}</mat-error>
+        </mat-form-field>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card appearance="outlined">
+    <mat-card-header><h2 mat-card-title>Where</h2></mat-card-header>
+    <mat-card-content class="app-form">
+      @if (venue(); as chosen) {
+        @if (!changingVenue()) {
+          <div class="venue" data-testid="chosen-venue">
+            <mat-icon aria-hidden="true">stadium</mat-icon>
+            <div class="venue-text">
+              <strong>{{ chosen.name }}</strong>
+              <span>{{ chosen.addressLine }}, {{ chosen.city }}</span>
+            </div>
+            <button matButton type="button" [disabled]="saving()" (click)="changeVenue()">Change venue</button>
+          </div>
+        }
+      }
+      @if (!venue() || changingVenue()) {
+        <app-venue-picker (venueSelected)="onVenueSelected($event)" />
+      }
+      @if (venueError(); as message) {
+        <app-inline-message kind="error" data-testid="venue-error">{{ message }}</app-inline-message>
+      }
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Rink (optional)</mat-label>
+        <input matInput formControlName="rinkLabel" [maxlength]="limits.RINK_MAX" />
+        <mat-hint>For example, “Rink 2”.</mat-hint>
+        <mat-error>{{ errorText(form.controls.rinkLabel, 'Keep the rink under 40 characters.') }}</mat-error>
+      </mat-form-field>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card appearance="outlined">
+    <mat-card-header><h2 mat-card-title>Details</h2></mat-card-header>
+    <mat-card-content class="app-form">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Title</mat-label>
+        <input matInput formControlName="title" [maxlength]="limits.TITLE_MAX" />
+        <mat-error>{{ errorText(form.controls.title, 'Enter a title.') }}</mat-error>
+      </mat-form-field>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Description (optional)</mat-label>
+        <textarea matInput formControlName="description" rows="4" [maxlength]="limits.DESCRIPTION_MAX"></textarea>
+        <mat-hint align="end">{{ value().description.length }}/{{ limits.DESCRIPTION_MAX }}</mat-hint>
+        <mat-error>{{ errorText(form.controls.description, 'Keep the description under 2000 characters.') }}</mat-error>
+      </mat-form-field>
+
+      <div class="skill">
+        <span class="label" id="skill-label">{{ skillText() }}</span>
+        <mat-slider min="0" max="7" step="1" discrete showTickMarks aria-labelledby="skill-label">
+          <input matSliderStartThumb formControlName="skillMin" aria-label="Lowest skill level" />
+          <input matSliderEndThumb formControlName="skillMax" aria-label="Highest skill level" />
+        </mat-slider>
+        <span class="helper">0 is a first-time skater. 7 is an ex-pro or elite player.</span>
+        <app-skill-levels-link class="skill-link" [newTab]="true" />
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card appearance="outlined">
+    <mat-card-header><h2 mat-card-title id="fee-title">Fee</h2></mat-card-header>
+    <mat-card-content class="app-form">
+      <mat-radio-group formControlName="feeMode" aria-labelledby="fee-title" class="fee-modes">
+        <mat-radio-button value="free">Free</mat-radio-button>
+        <mat-radio-button value="fixed">Fixed fee</mat-radio-button>
+        <mat-radio-button value="see">See join instructions</mat-radio-button>
+      </mat-radio-group>
+      @if (value().feeMode === 'fixed') {
+        <div class="row">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Amount</mat-label>
+            <span matTextPrefix>$&nbsp;</span>
+            <input matInput type="number" min="0.01" step="0.01" inputmode="decimal" formControlName="feeAmount" />
+            <mat-error>{{ errorText(form.controls.feeAmount, 'Enter an amount above zero.') }}</mat-error>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Currency</mat-label>
+            <mat-select formControlName="currency">
+              <mat-option value="CAD">CAD</mat-option>
+              <mat-option value="USD">USD</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card appearance="outlined">
+    <mat-card-header><h2 mat-card-title>How to join</h2></mat-card-header>
+    <mat-card-content class="app-form">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Join instructions</mat-label>
+        <textarea matInput formControlName="joinInstructions" rows="5" [maxlength]="limits.JOIN_MAX"></textarea>
+        <mat-hint>Tell players how to sign up and pay. Links are checked before they go live.</mat-hint>
+        <mat-hint align="end">{{ value().joinInstructions.length }}/{{ limits.JOIN_MAX }}</mat-hint>
+        <mat-error>{{ errorText(form.controls.joinInstructions, 'Enter join instructions.') }}</mat-error>
+      </mat-form-field>
+      @if (blockedUrls().length > 0 || tooManyUrls()) {
+        <app-inline-message kind="error" data-testid="blocked-urls">
+          @if (blockedUrls().length > 0) {
+            Remove or replace these links:
+            <ul class="list">
+              @for (url of blockedUrls(); track url) {
+                <li>{{ url }}</li>
+              }
+            </ul>
+          }
+          @if (tooManyUrls()) {
+            <span>Use at most 10 links.</span>
+          }
+        </app-inline-message>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card appearance="outlined" aria-labelledby="preview-title">
+    <mat-card-header><h2 mat-card-title id="preview-title">Preview</h2></mat-card-header>
+    <mat-card-content data-testid="preview">
+      @if (value().joinInstructions.trim()) {
+        <app-linkify-text [text]="value().joinInstructions" [eventId]="previewEventId()" />
+      } @else {
+        <span class="helper">Your join instructions appear here as players see them.</span>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  <div class="app-actions">
+    @if (isDraft()) {
+      <button matButton="outlined" type="button" [disabled]="saving() || loading()" (click)="save('draft')">
+        Save draft
+      </button>
+      <button matButton="filled" type="button" [disabled]="saving() || loading()" (click)="save('publish')">
+        Publish
+      </button>
+    } @else {
+      <button matButton="filled" type="button" [disabled]="saving() || loading()" (click)="save('changes')">
+        Save changes
+      </button>
+    }
+  </div>
+</form>

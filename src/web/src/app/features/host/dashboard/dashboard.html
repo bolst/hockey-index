@@ -1,0 +1,141 @@
+<app-page-header headline="Your events" supportingText="Drafts, published, and cancelled games you host.">
+  <a pageHeaderActions matButton="filled" routerLink="/host/events/new">
+    <mat-icon aria-hidden="true">add</mat-icon>
+    New event
+  </a>
+</app-page-header>
+
+<div class="progress-slot">
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Loading events" />
+  }
+</div>
+
+<div class="app-stack">
+  @if (limits()) {
+    <p class="limits" data-testid="limits">{{ limitsText() }}</p>
+  }
+  @if (limitNotice(); as notice) {
+    <app-inline-message kind="info" data-testid="limit-notice">{{ notice }}</app-inline-message>
+  }
+  @if (loadError(); as message) {
+    <app-inline-message kind="error">
+      {{ message }}
+      <button matButton type="button" (click)="load()">Try again</button>
+    </app-inline-message>
+  }
+  @if (actionError(); as failure) {
+    <app-inline-message kind="error" data-testid="action-error">
+      {{ failure.message }}
+      @if (failure.blockedUrls.length > 0) {
+        <span class="block">Blocked links:</span>
+        <ul class="urls">
+          @for (url of failure.blockedUrls; track url) {
+            <li>{{ url }}</li>
+          }
+        </ul>
+      }
+      @if (failure.editEventId; as id) {
+        <a class="block" [routerLink]="['/host/events', id, 'edit']">Edit join instructions</a>
+      }
+    </app-inline-message>
+  }
+  @if (actionInfo(); as info) {
+    <app-inline-message kind="info" data-testid="action-info">{{ info }}</app-inline-message>
+  }
+
+  @if (events(); as list) {
+    @if (list.length === 0) {
+      <app-empty-state icon="event_available" headline="No events yet">
+        <p>Create a scrimmage, league, or tournament. You can save it as a draft and publish later.</p>
+        <ng-container emptyStateActions>
+          <a matButton="filled" routerLink="/host/events/new">Create your first event</a>
+        </ng-container>
+      </app-empty-state>
+    } @else {
+      <ul class="events" aria-label="Your events">
+        @for (event of sortedEvents(); track event.publicId) {
+          <li>
+            <mat-card appearance="outlined" data-testid="event-card">
+              <mat-card-header>
+                <h2 mat-card-title>{{ event.title }}</h2>
+                <p mat-card-subtitle>{{ event.venue.name }}, {{ event.venue.city }}</p>
+                <button
+                  matIconButton
+                  type="button"
+                  class="more"
+                  [matMenuTriggerFor]="actions"
+                  [attr.aria-label]="'More actions for ' + event.title"
+                >
+                  <mat-icon aria-hidden="true">more_vert</mat-icon>
+                </button>
+              </mat-card-header>
+              <mat-card-content class="content">
+                <div class="meta">
+                  <app-status-chip [label]="status(event).label" [tone]="status(event).tone" />
+                  @if (event.type === 'scrimmage') {
+                    <span>{{ event.startsAt | venueTime: event.venue.timeZone : 'datetime' }}</span>
+                  } @else {
+                    <span>{{ dateRange(event) }}</span>
+                    @if (event.scheduleText) {
+                      <span>{{ event.scheduleText }}</span>
+                    }
+                  }
+                </div>
+                <p class="details">{{ skillLabel(event.skill) }} · {{ feeLabel(event.feeCents, event.currency) }}</p>
+                @if (event.publishRequestedAt) {
+                  <app-inline-message kind="info">Publishing after link check.</app-inline-message>
+                }
+                @if (event.pendingJoinInstructions) {
+                  <app-inline-message kind="info">New join instructions go live after link check.</app-inline-message>
+                }
+                @if (event.hiddenReason) {
+                  <app-inline-message kind="error">Hidden: {{ event.hiddenReason }}</app-inline-message>
+                }
+                @if (event.notice) {
+                  <app-inline-message kind="info">{{ event.notice }}</app-inline-message>
+                }
+              </mat-card-content>
+            </mat-card>
+            <mat-menu #actions="matMenu">
+              @if (event.status === 'draft' || event.status === 'published') {
+                <a mat-menu-item [routerLink]="['/host/events', event.publicId, 'edit']">
+                  <mat-icon aria-hidden="true">edit</mat-icon>
+                  <span>Edit</span>
+                </a>
+              }
+              @if (event.status === 'draft') {
+                <button mat-menu-item type="button" (click)="publish(event)">
+                  <mat-icon aria-hidden="true">publish</mat-icon>
+                  <span>Publish</span>
+                </button>
+              }
+              @if (event.status === 'published' || event.status === 'cancelled') {
+                <a mat-menu-item [href]="publicPath(event)">
+                  <mat-icon aria-hidden="true">open_in_new</mat-icon>
+                  <span>View public page</span>
+                </a>
+              }
+              <button mat-menu-item type="button" (click)="duplicate(event)">
+                <mat-icon aria-hidden="true">content_copy</mat-icon>
+                <span>Duplicate</span>
+              </button>
+              @if (event.status === 'published') {
+                <button mat-menu-item type="button" (click)="cancel(event)">
+                  <mat-icon aria-hidden="true">event_busy</mat-icon>
+                  <span>Cancel event</span>
+                </button>
+              }
+              @if (event.status === 'draft') {
+                <button mat-menu-item type="button" (click)="deleteDraft(event)">
+                  <mat-icon aria-hidden="true">delete</mat-icon>
+                  <span>Delete draft</span>
+                </button>
+              }
+            </mat-menu>
+          </li>
+        }
+      </ul>
+    }
+  }
+</div>

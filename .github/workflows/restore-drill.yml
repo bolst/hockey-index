@@ -1,0 +1,65 @@
+# PII WARNING (plan M6 task 2, risk R25): this job decrypts a production dump
+# that holds phone numbers and emails on a GitHub-hosted runner. Controls:
+#   - the protected `restore-drill` environment requires owner approval;
+#   - the dump streams through pipes and never touches disk in plaintext;
+#   - no artifacts or caches are uploaded;
+#   - logs print counts only (no `set -x`, no row data);
+#   - the runner is discarded after the job.
+# Preferred alternatives: a self-hosted ephemeral runner on owner-controlled
+# hardware, or the manual laptop drill in docs/runbook.md.
+name: restore-drill
+
+on:
+  schedule:
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    environment: restore-drill
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_PASSWORD: drill
+          POSTGRES_DB: hockeyindex
+          HI_MIGRATOR_PASSWORD: drill
+          HI_APP_PASSWORD: drill
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: drill
+      PGDATABASE: hockeyindex
+      RCLONE_CONFIG_R2_TYPE: s3
+      RCLONE_CONFIG_R2_PROVIDER: Cloudflare
+      RCLONE_CONFIG_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      RCLONE_CONFIG_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      RCLONE_CONFIG_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      BACKUP_REMOTE: r2:${{ secrets.R2_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clients
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y --no-install-recommends postgresql-client-17 age rclone
+      - name: Restore latest dump and run sanity checks (counts only)
+        env:
+          AGE_PRIVATE_KEY: ${{ secrets.BACKUP_AGE_PRIVATE_KEY }}
+          RESTORE_MIGRATIONS_DIR: src/api/HockeyIndex.Api/Infrastructure/Persistence/Migrations
+        run: |
+          echo "::add-mask::$AGE_PRIVATE_KEY"
+          deploy/restore/restore.sh

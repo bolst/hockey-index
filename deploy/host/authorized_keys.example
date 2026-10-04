@@ -1,0 +1,1 @@
+command="sudo /opt/hockey-index/deploy.sh",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleOnlyReplaceWithTheCiDeployPublicKey github-actions-deploy

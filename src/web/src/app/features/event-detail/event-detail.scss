@@ -1,0 +1,136 @@
+.back {
+  margin: -8px 0 16px -12px;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.overline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  font: var(--mat-sys-label-large);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mat-sys-primary);
+}
+
+.title {
+  margin: 0;
+  font: var(--mat-sys-display-small);
+  letter-spacing: var(--mat-sys-display-small-tracking);
+  overflow-wrap: anywhere;
+}
+
+.inactive .title {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.venue-line {
+  margin: 0;
+  font: var(--mat-sys-title-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.fact {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface-container);
+}
+
+dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: var(--mat-sys-label-medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+    color: var(--mat-sys-primary);
+  }
+}
+
+dd {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+}
+
+.primary {
+  font: var(--mat-sys-title-medium);
+}
+
+.skill-link {
+  margin-top: 4px;
+}
+
+.note {
+  margin: 0;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.join {
+  border-color: var(--mat-sys-primary);
+
+  mat-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 8px;
+  }
+}
+
+.join-text {
+  margin: 0;
+  font: var(--mat-sys-body-large);
+}
+
+.about h2 {
+  margin: 0 0 8px;
+  font: var(--mat-sys-title-large);
+}
+
+.description {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  color: var(--mat-sys-on-surface);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+@media (max-width: 599.98px) {
+  .title {
+    font: var(--mat-sys-headline-medium);
+  }
+}

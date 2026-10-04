@@ -1,0 +1,46 @@
+<a class="skip-link" href="#main">Skip to content</a>
+<mat-toolbar class="top-app-bar" role="banner">
+  <a class="brand" routerLink="/" aria-label="Hockey Index home">
+    <span class="brand-mark" aria-hidden="true"><mat-icon>sports_hockey</mat-icon></span>
+    <span class="brand-name">Hockey Index</span>
+  </a>
+  <span class="spacer"></span>
+  <nav class="nav-wide" aria-label="Main">
+    @for (item of navItems(); track item.link) {
+      <a
+        matButton
+        class="nav-link"
+        [routerLink]="item.link"
+        routerLinkActive="active"
+        ariaCurrentWhenActive="page"
+        [routerLinkActiveOptions]="{ exact: item.exact }"
+      >
+        <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
+        {{ item.label }}
+      </a>
+    }
+  </nav>
+  @defer (on idle; on interaction(menuPlaceholder)) {
+    <app-nav-menu class="nav-menu-button" [items]="navItems()" [openOnLoad]="menuRequested()" />
+  } @placeholder {
+    <button
+      #menuPlaceholder
+      matIconButton
+      class="nav-menu-button"
+      type="button"
+      aria-label="Open navigation menu"
+      (click)="menuRequested.set(true)"
+    >
+      <mat-icon aria-hidden="true">menu</mat-icon>
+    </button>
+  }
+</mat-toolbar>
+<main id="main" tabindex="-1">
+  <router-outlet />
+</main>
+<footer class="site-footer">
+  <p>Hockey Index lists pickup hockey run by local hosts. Check details with the host before you go.</p>
+  <nav class="footer-links" aria-label="Footer">
+    <a routerLink="/skill-levels">Skill levels</a>
+  </nav>
+</footer>

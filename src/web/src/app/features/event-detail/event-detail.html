@@ -1,0 +1,99 @@
+<a matButton class="back" routerLink="/">
+  <mat-icon aria-hidden="true">arrow_back</mat-icon>
+  Find more hockey
+</a>
+
+@if (notFound()) {
+  <app-empty-state icon="event_busy" headline="Event not found" [headingLevel]="1">
+    <p>The host may have removed it, or the link is wrong.</p>
+    <a emptyStateActions matButton="filled" routerLink="/">Search for games</a>
+  </app-empty-state>
+} @else if (failed()) {
+  <app-empty-state icon="cloud_off" headline="This event could not load" [headingLevel]="1">
+    <p data-testid="load-error">Check your connection, then try again.</p>
+    <button emptyStateActions matButton="filled" type="button" (click)="resource.reload()">Try again</button>
+  </app-empty-state>
+} @else if (event(); as e) {
+  <article class="app-stack app-stack--lg" [class.inactive]="ended() || cancelled()">
+    <header class="heading">
+      <div class="overline">
+        <span>{{ typeLabel() }}</span>
+        @if (cancelled()) {
+          <app-status-chip label="Cancelled" tone="critical" icon="event_busy" />
+        } @else if (ended()) {
+          <app-status-chip label="Ended" icon="history" />
+        }
+      </div>
+      <h1 class="title">{{ e.title }}</h1>
+      <p class="venue-line">{{ e.venue.name }} · {{ e.venue.city }}, {{ e.venue.region }}</p>
+    </header>
+
+    @if (cancelled()) {
+      <app-inline-message kind="error" data-testid="cancelled-notice">
+        The host cancelled this event{{ cancelledOn() ? ' on ' + cancelledOn() : '' }}. Do not go to the rink.
+      </app-inline-message>
+    } @else if (ended()) {
+      <app-inline-message kind="info" data-testid="ended-notice">This event has ended.</app-inline-message>
+    }
+
+    <dl class="facts">
+      <div class="fact">
+        <dt><mat-icon aria-hidden="true">calendar_month</mat-icon>When</dt>
+        <dd>
+          <span class="primary">{{ dateLine() }}</span>
+          @if (timeLine()) {
+            <span>{{ timeLine() }}</span>
+          }
+          @if (otherTimeZone(); as zone) {
+            <span class="note">Rink time ({{ zone }})</span>
+          }
+        </dd>
+      </div>
+      <div class="fact">
+        <dt><mat-icon aria-hidden="true">location_on</mat-icon>Where</dt>
+        <dd>
+          <span class="primary">{{ e.venue.name }}@if (e.rinkLabel) {<span> · {{ e.rinkLabel }}</span>}</span>
+          <span>{{ e.venue.addressLine }}</span>
+          <span>{{ e.venue.city }}, {{ e.venue.region }}</span>
+        </dd>
+      </div>
+      <div class="fact">
+        <dt><mat-icon aria-hidden="true">sports_hockey</mat-icon>Level and cost</dt>
+        <dd>
+          <span class="primary">{{ skill() }}</span>
+          <span>{{ fee() }}</span>
+          <app-skill-levels-link class="skill-link" />
+        </dd>
+      </div>
+    </dl>
+
+    @if (e.joinInstructions && !cancelled()) {
+      <mat-card appearance="outlined" class="join">
+        <mat-card-header>
+          <h2 mat-card-title>How to join</h2>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="join-text"><app-linkify-text [text]="e.joinInstructions" [eventId]="e.publicId" /></p>
+          <p class="note">Links open a check page first. Never pay anyone you cannot verify.</p>
+        </mat-card-content>
+      </mat-card>
+    }
+
+    @if (e.description) {
+      <section class="about" aria-labelledby="about-heading">
+        <h2 id="about-heading">About</h2>
+        <p class="description">{{ e.description }}</p>
+      </section>
+    }
+
+    <footer class="footer">
+      <p class="note">Hosts post their own events. Hockey Index does not run them.</p>
+      <button matButton type="button" (click)="report()">
+        <mat-icon aria-hidden="true">flag</mat-icon>
+        Report
+      </button>
+    </footer>
+  </article>
+} @else {
+  <mat-progress-bar mode="indeterminate" aria-label="Loading event" />
+}

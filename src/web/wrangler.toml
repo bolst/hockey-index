@@ -1,0 +1,9 @@
+name = "hockey-index-web"
+compatibility_date = "2026-10-01"
+pages_build_output_dir = "dist/hockey-index-web/browser"
+
+[vars]
+API_ORIGIN = "https://api.hockeyindex.com"
+
+[env.preview.vars]
+API_ORIGIN = "https://api-staging.hockeyindex.com"

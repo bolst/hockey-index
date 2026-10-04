@@ -1,0 +1,129 @@
+<app-page-header
+  headline="Find pickup hockey near you"
+  supportingText="Scrimmages, leagues and tournaments posted by local hosts."
+/>
+
+<section class="search-panel" aria-label="Search">
+  <app-location-field
+    class="location"
+    [label]="locationLabel()"
+    [locating]="locateState() === 'locating'"
+    (citySelected)="chooseCity($event)"
+    (useDevice)="locate()"
+  />
+  @if (compact()) {
+    <div class="compact-controls">
+      <button
+        matButton="outlined"
+        type="button"
+        [matBadge]="filterCount() || null"
+        matBadgeSize="small"
+        [attr.aria-label]="filterCount() ? 'Filters, ' + filterCount() + ' active' : 'Filters'"
+        (click)="openFilters()"
+      >
+        <mat-icon aria-hidden="true">tune</mat-icon>
+        Filters
+      </button>
+      @if (where()) {
+        <mat-button-toggle-group
+          aria-label="Show results as"
+          hideSingleSelectionIndicator
+          [value]="view()"
+          (change)="view.set($event.value)"
+        >
+          <mat-button-toggle value="list"><mat-icon aria-hidden="true">view_agenda</mat-icon> List</mat-button-toggle>
+          <mat-button-toggle value="map"><mat-icon aria-hidden="true">map</mat-icon> Map</mat-button-toggle>
+        </mat-button-toggle-group>
+      }
+    </div>
+  } @else {
+    <app-discover-filters class="filters" [filters]="filters()" (filtersChange)="updateFilters($event)" />
+  }
+</section>
+
+@switch (locateState()) {
+  @case ('locating') {
+    <div class="status" role="status">
+      <mat-progress-bar mode="indeterminate" aria-label="Finding your location" />
+      <p>Finding games near you…</p>
+    </div>
+  }
+  @case ('failed') {
+    @if (!where()) {
+      <app-empty-state icon="location_searching" headline="Where do you want to play?">
+        <p>We could not detect your location. Search for a city above to see games nearby.</p>
+      </app-empty-state>
+    }
+  }
+}
+
+@if (where()) {
+  <div class="results" [class.with-map]="!compact()">
+    <section
+      class="list"
+      aria-labelledby="results-heading"
+      [hidden]="compact() && view() === 'map'"
+      [attr.aria-busy]="search.isLoading()"
+    >
+      <div class="list-header">
+        <h2 id="results-heading" class="results-heading">
+          @if (search.hasValue()) {
+            {{ resultSummary() }}
+          } @else {
+            Searching…
+          }
+        </h2>
+      </div>
+      @if (search.isLoading()) {
+        <mat-progress-bar mode="indeterminate" aria-label="Loading results" />
+      }
+      @if (search.error()) {
+        <app-inline-message kind="error">
+          Results could not load. Check your connection and
+          <button matButton type="button" class="inline-button" (click)="search.reload()">try again</button>.
+        </app-inline-message>
+      }
+      @if (truncated()) {
+        <app-inline-message kind="info" data-testid="truncated-notice">
+          There are more games than we can show. Narrow the distance or dates to see them all.
+        </app-inline-message>
+      }
+      @if (search.hasValue() && results().length === 0) {
+        <app-empty-state icon="sports_hockey" headline="No games found">
+          <p>Nothing matches in the next {{ filters().days }} days. Try a wider area or fewer filters.</p>
+          @if (widerRadius(); as radius) {
+            <button emptyStateActions matButton="filled" type="button" (click)="widenRadius()">
+              Search within {{ radius }} mi
+            </button>
+          }
+        </app-empty-state>
+      }
+      <ol class="cards" [class.stale]="search.isLoading()">
+        @for (event of results(); track event.publicId) {
+          <li [id]="'result-' + event.publicId">
+            <app-event-card
+              [event]="event"
+              [class.highlighted]="highlightedId() === event.publicId"
+              (mouseenter)="highlightedId.set(event.publicId)"
+              (focusin)="highlightedId.set(event.publicId)"
+            />
+          </li>
+        }
+      </ol>
+    </section>
+    @if (!compact() || view() === 'map') {
+      @defer (on viewport) {
+        <app-discover-map
+          class="map"
+          [results]="results()"
+          [center]="where()!"
+          [radiusMiles]="filters().radius"
+          [highlightedId]="highlightedId()"
+          (markerSelected)="showOnList($event)"
+        />
+      } @placeholder {
+        <div class="map map-placeholder" aria-hidden="true"></div>
+      }
+    }
+  </div>
+}

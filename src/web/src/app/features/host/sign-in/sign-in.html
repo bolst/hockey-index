@@ -1,0 +1,89 @@
+<mat-card appearance="outlined" class="auth-card">
+  <div class="progress-slot">
+    @if (busy()) {
+      <mat-progress-bar mode="indeterminate" aria-label="Working" />
+    }
+  </div>
+  <mat-card-header>
+    <div mat-card-avatar class="avatar" aria-hidden="true"><mat-icon>sports_hockey</mat-icon></div>
+    <h1 mat-card-title>Host sign in</h1>
+    <p mat-card-subtitle>List your games and manage them in one place.</p>
+  </mat-card-header>
+
+  <mat-card-content class="app-stack app-stack--lg">
+    @if (sessionUnavailable) {
+      <app-inline-message kind="info" data-testid="session-unavailable">
+        We could not check whether you are signed in. Check your connection, then sign in to continue.
+      </app-inline-message>
+    }
+    <mat-button-toggle-group
+      class="method-toggle"
+      aria-label="Sign-in method"
+      [hideSingleSelectionIndicator]="false"
+      [value]="method()"
+      (change)="useMethod($event.value)"
+    >
+      <mat-button-toggle value="phone">Phone</mat-button-toggle>
+      <mat-button-toggle value="email">Email</mat-button-toggle>
+    </mat-button-toggle-group>
+
+    @if (step() === 'start') {
+      <form class="app-form" (submit)="$event.preventDefault(); start()">
+        @if (method() === 'phone') {
+          <mat-form-field subscriptSizing="dynamic" appearance="outline">
+            <mat-label>Mobile phone number</mat-label>
+            <mat-icon matPrefix aria-hidden="true">smartphone</mat-icon>
+            <input matInput id="phone" type="tel" autocomplete="tel" [formControl]="phone" />
+            <mat-hint>US or Canadian mobile number. We text you a code.</mat-hint>
+            <mat-error>Enter your mobile phone number.</mat-error>
+          </mat-form-field>
+        } @else {
+          <mat-form-field subscriptSizing="dynamic" appearance="outline">
+            <mat-label>Email address</mat-label>
+            <mat-icon matPrefix aria-hidden="true">mail</mat-icon>
+            <input matInput id="email" type="email" autocomplete="email" [formControl]="email" />
+            <mat-hint>Works only after you add and confirm an email on your account.</mat-hint>
+            @if (email.hasError('email')) {
+              <mat-error>Enter a valid email address.</mat-error>
+            } @else {
+              <mat-error>Enter your email address.</mat-error>
+            }
+          </mat-form-field>
+        }
+        <app-turnstile
+          [action]="method() === 'phone' ? 'phone_start' : 'email_start'"
+          (tokenChange)="turnstileToken.set($event)"
+        />
+        <div class="app-actions">
+          <button matButton="filled" class="primary-action" type="submit" [disabled]="busy()">Send code</button>
+        </div>
+      </form>
+    } @else {
+      <form class="app-form" (submit)="$event.preventDefault(); verify()">
+        <p class="step-intro">
+          @if (emailHint(); as hint) {
+            To finish signing in, enter the code we emailed to <strong>{{ hint }}</strong>.
+          } @else if (method() === 'phone') {
+            Enter the code we texted to <strong>{{ phone.value }}</strong>.
+          } @else {
+            If <strong>{{ email.value }}</strong> belongs to an account, we emailed it a code and a sign-in link.
+          }
+        </p>
+        <mat-form-field appearance="outline">
+          <mat-label>Code</mat-label>
+          <mat-icon matPrefix aria-hidden="true">pin</mat-icon>
+          <input matInput id="code" inputmode="numeric" autocomplete="one-time-code" [formControl]="code" />
+          <mat-error>Enter the code.</mat-error>
+        </mat-form-field>
+        <div class="app-actions">
+          <button matButton="filled" class="primary-action" type="submit" [disabled]="busy()">Sign in</button>
+          <button matButton type="button" (click)="restart()">Start over</button>
+        </div>
+      </form>
+    }
+
+    @if (error(); as message) {
+      <app-inline-message kind="error">{{ message }}</app-inline-message>
+    }
+  </mat-card-content>
+</mat-card>

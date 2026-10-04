@@ -1,0 +1,62 @@
+name: hockey-index-dev
+
+services:
+  pg-dev:
+    image: postgis/postgis:17-3.5
+    platform: linux/amd64
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dev-postgres
+      POSTGRES_DB: hockeyindex
+      HI_MIGRATOR_PASSWORD: dev-migrator
+      HI_APP_PASSWORD: dev-app
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-dev-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d hockeyindex"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrator-dev:
+    build:
+      context: ../src/api
+      dockerfile: ../../deploy/docker/migrator.Dockerfile
+    environment:
+      MIGRATOR_CONNECTION: Host=pg-dev;Port=5432;Database=hockeyindex;Username=hi_migrator;Password=dev-migrator
+    depends_on:
+      pg-dev:
+        condition: service_healthy
+    restart: "no"
+
+  api-dev:
+    build:
+      context: ../src/api
+      dockerfile: ../../deploy/docker/api.Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      HI_FAKE_PROVIDERS: "true"
+      HI_OPS_BIND: 0.0.0.0
+      # Development only: this phone becomes an admin on sign-in.
+      Admin__BootstrapPhones__0: "+14165550100"
+      ConnectionStrings__Default: Host=pg-dev;Port=5432;Database=hockeyindex;Username=hi_app;Password=dev-app
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    depends_on:
+      pg-dev:
+        condition: service_healthy
+      migrator-dev:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8081/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  pg-dev-data: {}

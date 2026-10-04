@@ -1,0 +1,96 @@
+name: hockey-index-staging
+
+services:
+  api-staging:
+    image: ${HI_API_IMAGE:?}:${STAGING_API_TAG:?}
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 1.0
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Staging
+      HI_OPS_BIND: ${STAGING_OPS_BIND:?}
+      ConnectionStrings__Default: Host=pg-staging;Port=5432;Database=${STAGING_POSTGRES_DB:?};Username=hi_app;Password=${STAGING_APP_PASSWORD:?}
+      Signup__Mode: ${STAGING_SIGNUP_MODE:?}
+      Edge__Key: ${STAGING_EDGE_KEY:?}
+      Edge__PreviousKey: ${STAGING_EDGE_PREVIOUS_KEY:-}
+      Hmac__Key: ${STAGING_HMAC_KEY:?}
+      Turnstile__SecretKey: ${STAGING_TURNSTILE_SECRET_KEY:?}
+      Twilio__AccountSid: ${STAGING_TWILIO_ACCOUNT_SID:?}
+      Twilio__AuthToken: ${STAGING_TWILIO_AUTH_TOKEN:?}
+      Twilio__VerifyServiceSid: ${STAGING_TWILIO_VERIFY_SERVICE_SID:?}
+      Twilio__CallbackUrl: ${STAGING_TWILIO_CALLBACK_URL:?}
+      Mapbox__AccessToken: ${STAGING_MAPBOX_ACCESS_TOKEN:?}
+      WebRisk__ApiKey: ${STAGING_WEBRISK_API_KEY:?}
+      Postmark__ServerToken: ${STAGING_POSTMARK_SERVER_TOKEN:?}
+      Cloudflare__ApiToken: ${STAGING_CLOUDFLARE_PURGE_TOKEN:?}
+      Cloudflare__ZoneId: ${CLOUDFLARE_ZONE_ID:?}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:?}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:?}
+    depends_on:
+      pg-staging:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://${STAGING_OPS_BIND:?}:8081/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      edge: {}
+      staging-internal:
+        ipv4_address: ${STAGING_OPS_BIND:?}
+
+  migrator-staging:
+    image: ${HI_MIGRATOR_IMAGE:?}:${STAGING_API_TAG:?}
+    profiles: [migrate]
+    restart: "no"
+    mem_limit: 512m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      MIGRATOR_CONNECTION: Host=pg-staging;Port=5432;Database=${STAGING_POSTGRES_DB:?};Username=hi_migrator;Password=${STAGING_MIGRATOR_PASSWORD:?}
+    depends_on:
+      pg-staging:
+        condition: service_healthy
+    networks:
+      - staging-internal
+
+  pg-staging:
+    image: postgis/postgis:17-3.5
+    restart: unless-stopped
+    mem_limit: 1g
+    cpus: 1.0
+    shm_size: 256m
+    command: ["postgres", "-c", "shared_buffers=256MB"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${STAGING_POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ${STAGING_POSTGRES_DB:?}
+      HI_MIGRATOR_PASSWORD: ${STAGING_MIGRATOR_PASSWORD:?}
+      HI_APP_PASSWORD: ${STAGING_APP_PASSWORD:?}
+    volumes:
+      - pg-staging-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d ${STAGING_POSTGRES_DB:?}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - staging-internal
+
+networks:
+  edge:
+    external: true
+    name: hockey-index-edge
+  staging-internal:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.20.0/24
+
+volumes:
+  pg-staging-data: {}

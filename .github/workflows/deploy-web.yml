@@ -1,0 +1,49 @@
+name: deploy-web
+
+on:
+  push:
+    branches: [main, staging]
+    paths:
+      - src/web/**
+      - .github/workflows/deploy-web.yml
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    defaults:
+      run:
+        working-directory: src/web
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/web/package-lock.json
+      - run: npm ci
+      - name: Set Turnstile site key
+        env:
+          TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY }}
+          ENVIRONMENT_FILE: src/environments/environment.${{ github.ref_name == 'main' && 'production' || 'staging' }}.ts
+        run: |
+          test -n "$TURNSTILE_SITE_KEY" || { echo "::error::Set the TURNSTILE_SITE_KEY variable on this GitHub environment."; exit 1; }
+          sed -i "s/'[A-Z]*_TURNSTILE_SITE_KEY'/'$TURNSTILE_SITE_KEY'/" "$ENVIRONMENT_FILE"
+          grep -q "'$TURNSTILE_SITE_KEY'" "$ENVIRONMENT_FILE"
+      - name: Build
+        env:
+          NG_CONFIGURATION: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+        run: npx ng build --configuration "$NG_CONFIGURATION"
+      - name: Deploy to Cloudflare Pages
+        env:
+          PAGES_PROJECT: ${{ vars.PAGES_PROJECT }}
+          PAGES_OUTPUT_DIR: ${{ vars.PAGES_OUTPUT_DIR || 'dist/hockey-index-web/browser' }}
+        run: npx wrangler pages deploy "$PAGES_OUTPUT_DIR" --project-name "$PAGES_PROJECT" --branch "$GITHUB_REF_NAME"

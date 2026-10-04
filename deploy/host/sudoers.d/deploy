@@ -1,0 +1,2 @@
+Defaults:deploy env_keep += "SSH_ORIGINAL_COMMAND"
+deploy ALL=(root) NOPASSWD: /opt/hockey-index/deploy.sh ""

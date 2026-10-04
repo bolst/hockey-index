@@ -1,0 +1,112 @@
+# Prometheus-style alert rules for Hockey Index (plan section 9.4).
+# Import into Grafana Cloud (Alerting > Alert rules > Import, or mimirtool rules load).
+# Metric names follow the OTel -> Prometheus conversion. If the exporter renames a series
+# (for example appends _ratio or _seconds), adjust the expression, not the alert name.
+# Twilio spend (usage trigger), restore-drill failure, and DST mismatch alert outside Prometheus:
+# Twilio emails the owner; GitHub Actions emails on failed restore-drill.yml and synthetic-dst.yml runs.
+groups:
+  - name: hockey-index-abuse
+    rules:
+      - alert: OtpSendSurge
+        expr: increase(hi_otp_sends_total[10m]) > 60
+        labels: {severity: page}
+        annotations:
+          summary: "More than 60 OTP sends in 10 minutes"
+          runbook: docs/runbook.md#sms-pumping
+      - alert: OtpConversionDrop
+        expr: hi_otp_conversion_ratio < 0.25 and increase(hi_otp_sends_total[1h]) >= 50
+        for: 10m
+        labels: {severity: page}
+        annotations:
+          summary: "OTP conversion below 25% over at least 50 sends per hour"
+          runbook: docs/runbook.md#sms-pumping
+      - alert: BreakerOpen
+        expr: hi_breaker_open == 1
+        labels: {severity: page}
+        annotations:
+          summary: "Breaker {{ $labels.name }} is open"
+          runbook: docs/runbook.md#circuit-breakers
+      - alert: ProviderBudgetLow
+        expr: hi_provider_budget_remaining < 0.10
+        labels: {severity: warn}
+        annotations:
+          summary: "Provider {{ $labels.provider }} has under 10% of its daily budget left"
+          runbook: docs/runbook.md#budget-caps
+      - alert: WebRiskQuotaHigh
+        expr: hi_webrisk_quota_used > 0.80
+        labels: {severity: warn}
+        annotations:
+          summary: "Web Risk usage is above 80% of the daily cap"
+          runbook: docs/runbook.md#budget-caps
+      - alert: AutoHideSpike
+        expr: increase(hi_events_auto_hidden_total[1h]) > 10
+        labels: {severity: warn}
+        annotations:
+          summary: "More than 10 events auto-hidden in 1 hour"
+          runbook: docs/runbook.md#moderation
+  - name: hockey-index-pipeline
+    rules:
+      - alert: PurgeFailures
+        expr: increase(hi_cf_purge_total{result="error"}[15m]) > 0
+        labels: {severity: warn}
+        annotations:
+          summary: "Cloudflare purge calls are failing (takedown still bounded by TTL)"
+          runbook: docs/runbook.md#purge-fallback
+      - alert: PublicSetCookieStripped
+        expr: increase(hi_public_set_cookie_stripped_total[5m]) > 0
+        labels: {severity: page}
+        annotations:
+          summary: "A public response tried to set a cookie; the auth pipeline regressed"
+      - alert: JobStale
+        # The API exports hi_job_interval_seconds next to hi_job_last_success_timestamp, one series per job_name.
+        # The tag is job_name because OTLP ingest reserves the label "job" for the service.
+        expr: time() - hi_job_last_success_timestamp > 2 * on(job_name) hi_job_interval_seconds
+        labels: {severity: warn}
+        annotations:
+          summary: "Job {{ $labels.job_name }} has not succeeded in twice its interval"
+      - alert: ScanPending
+        expr: hi_scan_pending_events > 0
+        for: 30m
+        labels: {severity: warn}
+        annotations:
+          summary: "Events wait for a link scan for more than 30 minutes"
+          runbook: docs/runbook.md#circuit-breakers
+      - alert: Api5xxRate
+        expr: |
+          sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[5m]))
+            / sum(rate(http_server_request_duration_seconds_count[5m])) > 0.02
+        for: 5m
+        labels: {severity: page}
+        annotations:
+          summary: "More than 2% of API requests return 5xx"
+  - name: hockey-index-backup
+    rules:
+      - alert: BackupStale
+        expr: time() - backup_last_success_timestamp > 26 * 3600
+        labels: {severity: page}
+        annotations:
+          summary: "No successful backup in 26 hours"
+          runbook: docs/runbook.md#restore
+      - alert: BackupSizeSuspicious
+        expr: backup_size_bytes < 0.5 * quantile_over_time(0.5, backup_size_bytes[7d])
+        labels: {severity: page}
+        annotations:
+          summary: "Latest backup is under 50% of the 7-day median size"
+          runbook: docs/runbook.md#restore
+  - name: hockey-index-host
+    rules:
+      - alert: DiskUsageHigh
+        expr: |
+          1 - (node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay"}
+               / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"}) > 0.80
+        for: 10m
+        labels: {severity: warn}
+        annotations:
+          summary: "Root disk is above 80%"
+      - alert: UptimeCheckFailing
+        # Probe series come from the external uptime check (Grafana Synthetic Monitoring).
+        expr: probe_success{job=~"hockey-index-(healthz|home)"} == 0
+        for: 3m
+        labels: {severity: page}
+        annotations:
+          summary: "External uptime check failing for {{ $labels.job }}"

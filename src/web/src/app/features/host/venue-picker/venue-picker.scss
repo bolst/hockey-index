@@ -1,0 +1,71 @@
+.venue-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.search-field {
+  width: 100%;
+}
+
+.search-spinner {
+  margin-right: 12px;
+}
+
+.secondary-text {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+.section-title {
+  margin: 0;
+  font: var(--mat-sys-title-medium);
+}
+
+.selected-venue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-surface-container-low);
+}
+
+.selected-icon {
+  color: var(--mat-sys-primary);
+}
+
+.selected-text {
+  display: flex;
+  flex: 1 1 200px;
+  flex-direction: column;
+}
+
+.selected-label {
+  font: var(--mat-sys-label-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.address {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.choices {
+  padding: 0;
+}
+
+.mat-mdc-option .option-title {
+  display: block;
+}
+
+.mat-mdc-option .option-line {
+  display: block;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}

@@ -1,0 +1,6 @@
+ingress:
+  - hostname: api.hockeyindex.com
+    service: http://api:8080
+  - hostname: api-staging.hockeyindex.com
+    service: http://api-staging:8080
+  - service: http_status:404

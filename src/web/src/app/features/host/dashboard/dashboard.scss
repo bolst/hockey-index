@@ -1,0 +1,72 @@
+.progress-slot {
+  height: 4px;
+  margin-block: -12px 8px;
+}
+
+.limits {
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.block {
+  display: block;
+  margin-top: 8px;
+}
+
+.urls {
+  margin: 4px 0 0;
+  padding-left: 20px;
+  overflow-wrap: anywhere;
+}
+
+.events {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+mat-card {
+  height: 100%;
+}
+
+mat-card-header {
+  position: relative;
+  padding-right: 56px;
+}
+
+h2[mat-card-title] {
+  margin: 0;
+  font: var(--mat-sys-title-large);
+  overflow-wrap: anywhere;
+}
+
+.more {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font: var(--mat-sys-body-medium);
+}
+
+.details {
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}

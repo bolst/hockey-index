@@ -1,0 +1,114 @@
+<div class="venue-picker">
+  @if (selected(); as venue) {
+    <div class="selected-venue">
+      <mat-icon class="selected-icon" aria-hidden="true">stadium</mat-icon>
+      <div class="selected-text">
+        <span class="selected-label">Venue</span>
+        <strong>{{ venue.name }}</strong>
+        <span class="secondary-text">{{ venue.addressLine }}, {{ venue.city }}</span>
+      </div>
+      <button matButton type="button" (click)="backToSearch()">Change venue</button>
+    </div>
+  } @else if (candidates(); as list) {
+    <h3 class="section-title" [id]="id + '-candidates'">Did you mean…?</h3>
+    <p class="secondary-text">These venues are already on Hockey Index near that address.</p>
+    <mat-action-list class="choices" [attr.aria-labelledby]="id + '-candidates'">
+      @for (venue of list; track venue.publicId) {
+        <button mat-list-item type="button" (click)="chooseVenue(venue)">
+          <mat-icon matListItemIcon aria-hidden="true">stadium</mat-icon>
+          <span matListItemTitle>{{ venue.name }}</span>
+          <span matListItemLine>{{ venue.addressLine }}, {{ venue.city }}</span>
+        </button>
+      }
+    </mat-action-list>
+    <div class="app-actions">
+      <button matButton="filled" type="button" [disabled]="busy()" (click)="createVenue(true)">
+        None of these. Add “{{ facilityName.value }}” as a new venue
+      </button>
+      <button matButton type="button" (click)="backToSearch()">Back to search</button>
+    </div>
+  } @else if (pendingSuggestion(); as suggestion) {
+    <form class="app-form" (submit)="$event.preventDefault(); createVenue()">
+      <p class="address"><mat-icon aria-hidden="true">location_on</mat-icon> {{ suggestion.label }}</p>
+      <mat-form-field subscriptSizing="dynamic" appearance="outline">
+        <mat-label>Facility name</mat-label>
+        <input matInput [id]="id + '-name'" [maxlength]="facilityNameMaxLength" [formControl]="facilityName" />
+        <mat-hint>For example, “Mattamy Athletic Centre”.</mat-hint>
+        <mat-error>Enter the facility name.</mat-error>
+      </mat-form-field>
+      <div class="app-actions">
+        <button matButton="filled" type="submit" [disabled]="busy()">Add venue</button>
+        <button matButton type="button" (click)="backToSearch()">Back to search</button>
+      </div>
+    </form>
+  } @else {
+    <mat-form-field subscriptSizing="dynamic" appearance="outline" class="search-field">
+      <mat-label>Venue</mat-label>
+      <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+      <input
+        matInput
+        [id]="id + '-search'"
+        type="search"
+        autocomplete="off"
+        [matAutocomplete]="venueOptions"
+        [value]="query()"
+        (input)="onQuery($event)"
+      />
+      @if (searching()) {
+        <mat-progress-spinner matSuffix class="search-spinner" mode="indeterminate" diameter="20" aria-hidden="true" />
+      }
+      <mat-hint>Type at least 2 characters of the rink name or address.</mat-hint>
+    </mat-form-field>
+    <mat-autocomplete
+      #venueOptions="matAutocomplete"
+      class="venue-options"
+      [displayWith]="optionLabel"
+      (optionSelected)="onOptionSelected($event)"
+    >
+      @if (results(); as response) {
+        @if (response.venues.length > 0) {
+          <mat-optgroup label="Venues on Hockey Index" data-testid="db-venues">
+            @for (venue of response.venues; track venue.publicId) {
+              <mat-option [value]="{ kind: 'venue', venue: venue }">
+                <mat-icon aria-hidden="true">stadium</mat-icon>
+                <span class="option-title">{{ venue.name }}</span>
+                <span class="option-line">{{ venue.addressLine }}, {{ venue.city }}</span>
+              </mat-option>
+            }
+          </mat-optgroup>
+        }
+        @if (response.suggestions.length > 0) {
+          <mat-optgroup label="Add a new venue at an address" data-testid="suggestions">
+            @for (suggestion of response.suggestions; track suggestion.providerPlaceId) {
+              <mat-option [value]="{ kind: 'suggestion', suggestion: suggestion }">
+                <mat-icon aria-hidden="true">add_location_alt</mat-icon>
+                <span class="option-title">{{ suggestion.label }}</span>
+              </mat-option>
+            }
+          </mat-optgroup>
+        }
+      }
+    </mat-autocomplete>
+    <div class="live-status" aria-live="polite">
+      @if (searching()) {
+        <span class="visually-hidden">Searching…</span>
+      } @else if (results(); as response) {
+        @if (response.venues.length === 0 && response.suggestions.length === 0) {
+          <p class="secondary-text">No venues or addresses match.</p>
+        } @else {
+          <span class="visually-hidden">
+            {{ response.venues.length + response.suggestions.length }} results. Use the arrow keys to choose.
+          </span>
+        }
+      }
+    </div>
+    @if (results(); as response) {
+      @if (suggestionsMessage(response.suggestionsStatus); as message) {
+        <app-inline-message kind="info" data-testid="suggestions-status">{{ message }}</app-inline-message>
+      }
+    }
+  }
+  @if (error(); as message) {
+    <app-inline-message kind="error">{{ message }}</app-inline-message>
+  }
+</div>

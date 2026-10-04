@@ -1,0 +1,3 @@
+# Intentionally empty. Without a top-level 404.html, Cloudflare Pages serves index.html for unknown
+# paths (single-page app mode), so deep links such as /host/account work. A "/* /index.html 200" rule
+# here causes an infinite redirect loop and MUST NOT be added.
